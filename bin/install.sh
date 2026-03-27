@@ -6,6 +6,8 @@ set -euo pipefail
 readonly REPOSITORY_DEFAULT='https://raw.githubusercontent.com/44devcom/make/refs/heads/master/bin/'
 REPOSITORY="${REPOSITORY:-$REPOSITORY_DEFAULT}"
 REPOSITORY="${REPOSITORY%/}/"
+tmp_lib_dir=''
+fetched_lib_path=''
 
 dry_run=0
 components=()
@@ -89,48 +91,60 @@ parse_args() {
   done
 }
 
-fetch_lib_to_temp() {
-  local url=$1
-  local tmp
-  tmp=$(mktemp) || return 1
+ensure_tmp_lib_dir() {
+  if [[ -n "$tmp_lib_dir" ]]; then
+    return 0
+  fi
+  tmp_lib_dir=$(mktemp -d) || return 1
+}
+
+cleanup_tmp_lib_dir() {
+  if [[ -n "$tmp_lib_dir" ]]; then
+    rm -rf "$tmp_lib_dir"
+  fi
+}
+
+fetch_lib_to_cache() {
+  local stem=$1
+  local url="${REPOSITORY}lib/${stem}.sh"
+  local out
+  ensure_tmp_lib_dir || return 1
+  out="${tmp_lib_dir}/${stem}.sh"
   if command -v curl >/dev/null 2>&1; then
-    if ! curl -fsSL "$url" -o "$tmp"; then
-      rm -f "$tmp"
+    if ! curl -fsSL "$url" -o "$out"; then
+      rm -f "$out"
       return 1
     fi
   elif command -v wget >/dev/null 2>&1; then
-    if ! wget -qO "$tmp" "$url"; then
-      rm -f "$tmp"
+    if ! wget -qO "$out" "$url"; then
+      rm -f "$out"
       return 1
     fi
   else
-    rm -f "$tmp"
     printf 'install.sh: need curl or wget to fetch libs from REPOSITORY\n' >&2
     return 1
   fi
-  printf '%s' "$tmp"
+  fetched_lib_path="$out"
+  return 0
 }
 
 source_remote_lib() {
   local stem=$1
-  local url="${REPOSITORY}lib/${stem}.sh"
-  local tmp
-  if ! tmp=$(fetch_lib_to_temp "$url"); then
-    printf 'install.sh: failed to fetch %s\n' "$url" >&2
+  if ! fetch_lib_to_cache "$stem"; then
+    printf 'install.sh: failed to fetch %slib/%s.sh\n' "$REPOSITORY" "$stem" >&2
     exit 1
   fi
   # shellcheck disable=SC1090
-  if ! source "$tmp"; then
-    rm -f "$tmp"
+  if ! source "$fetched_lib_path"; then
     exit 1
   fi
-  rm -f "$tmp"
 }
 
 source_libs() {
   # Order-independent; each lib guards double-load.
   local stem
-  for stem in tools chrome docker xrdp-gnome xrdp-xfce; do
+  trap cleanup_tmp_lib_dir EXIT
+  for stem in tools chrome docker xrdp-common xrdp-gnome xrdp-xfce; do
     source_remote_lib "$stem"
   done
 }
