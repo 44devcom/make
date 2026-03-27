@@ -1,6 +1,6 @@
 # Build Debian 13 slim image that runs install.sh with INSTALL_MODULES from env.
 #
-# From repo ground:
+# From repo root:
 #   docker compose -f examples/compose-resources.yaml --project-directory examples up --build -d
 # One-shot (exit after install, no sleep):
 #   docker compose -f examples/compose-resources.yaml --project-directory examples run --rm installer true
@@ -16,6 +16,7 @@ services:
       context: ..
       dockerfile: Dockerfile
     environment:
+      DEBIAN_FRONTEND: noninteractive
       INSTALL_MODULES: ${INSTALL_MODULES:-tools}
       REPOSITORY: ${REPOSITORY:-file:///install/bin/}
       XFCE_METAPACKAGE: ${XFCE_METAPACKAGE:-xfce4}

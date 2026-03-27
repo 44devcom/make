@@ -5,6 +5,8 @@ FROM debian:trixie-slim
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
   && apt-get install -y --no-install-recommends bash ca-certificates curl sudo \
+  && printf '%s\n' 'Defaults env_keep += "DEBIAN_FRONTEND"' >/etc/sudoers.d/99-debconf \
+  && chmod 440 /etc/sudoers.d/99-debconf \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /install
