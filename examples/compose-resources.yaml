@@ -1,27 +1,36 @@
 # Build Debian 13 slim image that runs install.sh with INSTALL_MODULES from env.
 #
-# From repo root:
-#   docker compose -f examples/compose-resources.yaml --project-directory examples up --build -d
+# From repo root (no build on start):
+#   docker compose -f examples/compose-resources.yaml --project-directory examples up -d
+# Build once manually when needed:
+#   docker build -t ${IMAGE_NAME:-make-1-installer:local} .
 # One-shot (exit after install, no sleep):
 #   docker compose -f examples/compose-resources.yaml --project-directory examples run --rm installer true
 #
-# Slowness: logs show task-xfce-desktop pulling ~720MB / 1000+ debs; dpkg unpack is slow on limited CPU/disk.
-# This compose defaults XFCE_METAPACKAGE=xfce4 (core XFCE only). Set task-xfce-desktop for a full desktop DVD-style set.
+# Image build bakes INSTALL_MODULES (default tools chrome xrdp-xfce); startup skips apt when INSTALL_MODULES matches BAKED_INSTALL_MODULES.
+# Add modules at runtime or change INSTALL_MODULES and set FORCE_RUNTIME_INSTALL=1 (or omit .env match) to run install.sh again.
+# task-xfce-desktop is huge (~720MB+); XFCE_METAPACKAGE=xfce4 is the default for bakes and runtime.
 #
 # RDP: host RDP_HOST_PORT → container 3389. Include xrdp-xfce in INSTALL_MODULES. privileged: true for Xorg.
+# Shared folder (host <-> container): SHARED_HOST_DIR bind-mounted at SHARED_CONTAINER_DIR.
 
 services:
   installer:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    image: ${IMAGE_NAME:-xrdp:local}
+    entrypoint: ["bash", "/install/bin/docker-entrypoint-install.sh"]
+    command: ["sleep", "infinity"]
     environment:
       DEBIAN_FRONTEND: noninteractive
-      INSTALL_MODULES: ${INSTALL_MODULES:-tools}
+      INSTALL_MODULES: "${INSTALL_MODULES:-tools chrome xrdp-xfce}"
       REPOSITORY: ${REPOSITORY:-file:///install/bin/}
       XFCE_METAPACKAGE: ${XFCE_METAPACKAGE:-xfce4}
       XRDP_ROOT_PASSWORD: ${XRDP_ROOT_PASSWORD:-}
       XRDP_ALLOW_ROOT: ${XRDP_ALLOW_ROOT:-1}
+      FORCE_RUNTIME_INSTALL: ${FORCE_RUNTIME_INSTALL:-0}
+      USERADD_USERS: ${USERADD_USERS:-}
+      USERADD_DEFAULT_SHELL: ${USERADD_DEFAULT_SHELL:-/bin/bash}
+      USERADD_DEFAULT_GROUPS: ${USERADD_DEFAULT_GROUPS:-}
+      USERADD_DEFAULT_PASSWORD: ${USERADD_DEFAULT_PASSWORD:-}
     deploy:
       resources:
         limits:
@@ -32,6 +41,14 @@ services:
           memory: "${SERVICE_MEMORY_RESERVATION:-256M}"
     ports:
       - "${RDP_HOST_PORT:-3389}:3389"
+    volumes:
+      - type: bind
+        source: ../bin
+        target: /install/bin
+        read_only: true
+      - type: bind
+        source: ${SHARED_HOST_DIR:-./shared}
+        target: ${SHARED_CONTAINER_DIR:-/shared}
     privileged: true
     restart: unless-stopped
     stdin_open: true

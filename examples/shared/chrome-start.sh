@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CHROME_BIN="${CHROME_BIN:-google-chrome}"
+URL="${1:-https://www.google.com}"
+
+args=(
+  --disable-infobars
+  --no-first-run
+  --no-sandbox
+  --no-default-browser-check
+  --disable-background-networking
+  --disable-background-timer-throttling
+  --disable-backgrounding-occluded-windows
+  --disable-breakpad
+  --disable-client-side-phishing-detection
+  --disable-component-update
+  --disable-default-apps
+  --disable-dev-shm-usage
+  --disable-domain-reliability
+  --disable-extensions
+  --disable-features=TranslateUI
+  --disable-hang-monitor
+  --disable-ipc-flooding-protection
+  --disable-popup-blocking
+  --disable-prompt-on-repost
+  --disable-renderer-backgrounding
+  --disable-sync
+  --disable-web-security
+  --metrics-recording-only
+  --mute-audio
+  --disable-gpu
+  --disable-software-rasterizer
+  --disable-accelerated-2d-canvas
+  --disable-accelerated-jpeg-decoding
+  --disable-accelerated-mjpeg-decode
+  --disable-accelerated-video-decode
+  --disable-accelerated-video-encode
+  --disable-gl-drawing-for-tests
+  --disable-threaded-animation
+  --disable-threaded-scrolling
+  --disable-checker-imaging
+  --disable-new-content-rendering-timeout
+  --disable-image-animation-resync
+  --disable-partial-raster
+  --disable-skia-runtime-opts
+  --disable-low-res-tiling
+  --disable-smooth-scrolling
+  --disable-reading-from-canvas
+  --disable-logging
+  --log-level=3
+  --enable-logging=stderr
+  --v=1
+  --start-maximized
+  --incognito
+  --user-data-dir=/tmp/chrome-profile
+  --remote-debugging-port=9222
+  --allow-running-insecure-content
+  --ignore-certificate-errors
+  --ignore-ssl-errors
+  --allow-insecure-localhost
+  --disable-site-isolation-trials
+  --disable-features=IsolateOrigins,site-per-process
+  --autoplay-policy=no-user-gesture-required
+  --disable-notifications
+  --disable-geolocation
+  --disable-permissions-api
+  --disable-desktop-notifications
+  --disable-usb-keyboard-detect
+  --disable-print-preview
+  --disable-speech-api
+  --disable-translate
+  --disable-plugins
+  --disable-plugins-discovery
+  --disable-preconnect
+  --dns-prefetch-disable
+  --no-pings
+  --password-store=basic
+  --use-mock-keychain
+  --enable-features=NetworkService,NetworkServiceInProcess
+  --disable-features=NetworkPrediction
+)
+
+exec "$CHROME_BIN" "${args[@]}" "$URL"
