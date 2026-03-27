@@ -17,16 +17,18 @@ _xrdp_xfce_lib_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${_xrdp_xfce_lib_dir}/xrdp-common.sh"
 
 bin_install_xrdp_xfce() {
-  sudo apt-get install -y task-xfce-desktop dbus-x11
+  # task-xfce-desktop is huge (~700MB+, 1000+ packages). For Docker/CI use XFCE_METAPACKAGE=xfce4.
+  local meta="${XFCE_METAPACKAGE:-task-xfce-desktop}"
+  sudo apt-get install -y "$meta" dbus-x11
 
-  sudo systemctl set-default graphical.target
+  sudo systemctl set-default graphical.target || true
 
   sudo apt-get install -y xrdp xorgxrdp
 
   sudo adduser xrdp ssl-cert || true
 
-  sudo systemctl enable xrdp
-  sudo systemctl restart xrdp
+  sudo systemctl enable xrdp || true
+  sudo systemctl restart xrdp || true
 
   bin_lib_sysctl_xrdp_tuning
 
@@ -34,7 +36,7 @@ bin_install_xrdp_xfce() {
 #!/bin/sh
 unset DBUS_SESSION_BUS_ADDRESS
 unset XDG_RUNTIME_DIR
-exec startxfce4
+exec dbus-launch --exit-with-session startxfce4
 EOF
 
   sudo chmod +x /etc/xrdp/startwm.sh
@@ -43,7 +45,7 @@ EOF
 startxfce4
 EOF
 
-  sudo systemctl restart xrdp
+  sudo systemctl restart xrdp || true
 
   printf '%s\n' 'DONE: Connect via RDP (port 3389) — XFCE session'
 }

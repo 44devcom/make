@@ -15,5 +15,6 @@ _bin_lib_xrdp_common_loaded=1
 bin_lib_sysctl_xrdp_tuning() {
   echo "vm.max_map_count=524288" | sudo tee /etc/sysctl.d/99-custom.conf >/dev/null
   echo "net.core.wmem_max=8388608" | sudo tee -a /etc/sysctl.d/99-custom.conf >/dev/null
-  sudo sysctl --system
+  # Docker and other restricted namespaces often deny sysctl writes; do not fail the installer.
+  sudo sysctl --system 2>/dev/null || true
 }

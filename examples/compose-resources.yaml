@@ -1,0 +1,37 @@
+# Build Debian 13 slim image that runs install.sh with INSTALL_MODULES from env.
+#
+# From repo ground:
+#   docker compose -f examples/compose-resources.yaml --project-directory examples up --build -d
+# One-shot (exit after install, no sleep):
+#   docker compose -f examples/compose-resources.yaml --project-directory examples run --rm installer true
+#
+# Slowness: logs show task-xfce-desktop pulling ~720MB / 1000+ debs; dpkg unpack is slow on limited CPU/disk.
+# This compose defaults XFCE_METAPACKAGE=xfce4 (core XFCE only). Set task-xfce-desktop for a full desktop DVD-style set.
+#
+# RDP: host RDP_HOST_PORT → container 3389. Include xrdp-xfce in INSTALL_MODULES. privileged: true for Xorg.
+
+services:
+  installer:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      INSTALL_MODULES: ${INSTALL_MODULES:-tools}
+      REPOSITORY: ${REPOSITORY:-file:///install/bin/}
+      XFCE_METAPACKAGE: ${XFCE_METAPACKAGE:-xfce4}
+      XRDP_ROOT_PASSWORD: ${XRDP_ROOT_PASSWORD:-}
+      XRDP_ALLOW_ROOT: ${XRDP_ALLOW_ROOT:-1}
+    deploy:
+      resources:
+        limits:
+          cpus: "${SERVICE_CPUS_LIMIT:-0.50}"
+          memory: "${SERVICE_MEMORY_LIMIT:-512M}"
+        reservations:
+          cpus: "${SERVICE_CPUS_RESERVATION:-0.25}"
+          memory: "${SERVICE_MEMORY_RESERVATION:-256M}"
+    ports:
+      - "${RDP_HOST_PORT:-3389}:3389"
+    privileged: true
+    restart: unless-stopped
+    stdin_open: true
+    tty: true

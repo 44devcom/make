@@ -34,6 +34,7 @@ bin_install_docker() {
     sudo apt-get remove -y docker-compose
   fi
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  # Docker: Debian 13 slim + installer + limits — Dockerfile (root), examples/compose-resources.yaml, examples/.env.example.
 
   if ! getent group docker >/dev/null; then
     sudo groupadd docker
