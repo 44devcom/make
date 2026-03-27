@@ -28,7 +28,12 @@ bin_install_docker() {
     sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
 
   sudo apt-get update
-  sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-compose
+  # Debian's docker-compose .deb and Docker's docker-compose-plugin both own
+  # /usr/libexec/docker/cli-plugins/docker-compose — remove the distro package first.
+  if dpkg-query -W -f='${Status}' docker-compose 2>/dev/null | grep -q 'ok installed'; then
+    sudo apt-get remove -y docker-compose
+  fi
+  sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
   if ! getent group docker >/dev/null; then
     sudo groupadd docker

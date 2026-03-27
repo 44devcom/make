@@ -158,7 +158,7 @@ dry_run_chrome() {
 }
 
 dry_run_docker() {
-  printf '[dry-run] docker: add Docker APT repo, apt-get update, install docker-ce stack, docker group + usermod\n'
+  printf '[dry-run] docker: add Docker APT repo, apt-get update, remove distro docker-compose if installed (plugin conflict), install docker-ce stack + docker-compose-plugin, docker group + usermod\n'
 }
 
 dry_run_xrdp_gnome() {
