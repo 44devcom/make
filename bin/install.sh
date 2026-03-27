@@ -2,10 +2,10 @@
 # Orchestrator: run selected bin/lib installers in order.
 set -euo pipefail
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-readonly script_dir
-lib_dir="${script_dir}/lib"
-readonly lib_dir
+# Base URL for bin/ on the default branch (trailing slash required). Override with env REPOSITORY.
+readonly REPOSITORY_DEFAULT='https://raw.githubusercontent.com/44devcom/make/refs/heads/master/bin/'
+REPOSITORY="${REPOSITORY:-$REPOSITORY_DEFAULT}"
+REPOSITORY="${REPOSITORY%/}/"
 
 dry_run=0
 components=()
@@ -20,7 +20,11 @@ show_help() {
   cat <<EOF
 Usage: $(basename "$0") [--dry-run] [--help] <component> [component ...]
 
-Run one or more host setup modules from ${lib_dir}/ in the order given.
+Run one or more host setup modules loaded from REPOSITORY (see below) in the order given.
+
+Environment:
+  REPOSITORY  Base URL for bin/ (default: ${REPOSITORY_DEFAULT}).
+              Lib scripts are fetched from \${REPOSITORY}lib/<name>.sh (needs curl or wget).
 
 Options:
   --dry-run   Print planned actions only (no sudo, no installs)
@@ -85,18 +89,50 @@ parse_args() {
   done
 }
 
+fetch_lib_to_temp() {
+  local url=$1
+  local tmp
+  tmp=$(mktemp) || return 1
+  if command -v curl >/dev/null 2>&1; then
+    if ! curl -fsSL "$url" -o "$tmp"; then
+      rm -f "$tmp"
+      return 1
+    fi
+  elif command -v wget >/dev/null 2>&1; then
+    if ! wget -qO "$tmp" "$url"; then
+      rm -f "$tmp"
+      return 1
+    fi
+  else
+    rm -f "$tmp"
+    printf 'install.sh: need curl or wget to fetch libs from REPOSITORY\n' >&2
+    return 1
+  fi
+  printf '%s' "$tmp"
+}
+
+source_remote_lib() {
+  local stem=$1
+  local url="${REPOSITORY}lib/${stem}.sh"
+  local tmp
+  if ! tmp=$(fetch_lib_to_temp "$url"); then
+    printf 'install.sh: failed to fetch %s\n' "$url" >&2
+    exit 1
+  fi
+  # shellcheck disable=SC1090
+  if ! source "$tmp"; then
+    rm -f "$tmp"
+    exit 1
+  fi
+  rm -f "$tmp"
+}
+
 source_libs() {
   # Order-independent; each lib guards double-load.
-  # shellcheck source=lib/tools.sh
-  source "${lib_dir}/tools.sh"
-  # shellcheck source=lib/chrome.sh
-  source "${lib_dir}/chrome.sh"
-  # shellcheck source=lib/docker.sh
-  source "${lib_dir}/docker.sh"
-  # shellcheck source=lib/xrdp-gnome.sh
-  source "${lib_dir}/xrdp-gnome.sh"
-  # shellcheck source=lib/xrdp-xfce.sh
-  source "${lib_dir}/xrdp-xfce.sh"
+  local stem
+  for stem in tools chrome docker xrdp-gnome xrdp-xfce; do
+    source_remote_lib "$stem"
+  done
 }
 
 dry_run_tools() {
